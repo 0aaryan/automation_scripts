@@ -6,11 +6,12 @@ import logging
 from github import Github
 import ruamel.yaml
 from git import Repo
+import git
 
 
 USERNAME = "0aaryan"
 REPO_NAME = "0aaryan.github.io"
-GH_PAT = os.environ.get('GH_PAT')
+GH_PAT = str(os.environ.get('GH_PAT'))
 
 
 
@@ -22,11 +23,13 @@ logging.basicConfig(filename='app.log', level=logging.INFO, format='%(asctime)s 
 
 def get_json_item(readme_content):
     try:
-        json_data = re.findall(r"<!---([\s\S]*?)--->", readme_content)[0]
-        return json.loads(json_data)
-    except (IndexError, json.JSONDecodeError) as e:
-        logging.error(f"Error extracting JSON data: {e}")
-        print(f"Error extracting JSON data: {e}")
+        comment_start = "<!---"
+        comment_end = "--->"
+        first_comment = readme_content.split(comment_start)[1].split(comment_end)[0]
+        json_item = json.loads(first_comment.strip())
+        return json_item
+    except Exception as e:
+        logging.warning(f"json details not found in readme")
         return None
 
 def get_readme_data(github_instance, username):
@@ -35,13 +38,19 @@ def get_readme_data(github_instance, username):
         items = []
         for repo in user.get_repos():
             try:
-                readme = repo.get_readme()
-                if not readme:
+                try:
+                    readme = repo.get_readme()
+                except Exception as e:
+                    readme = None
+                    pass
+                if readme is None:
                     continue
                 readme_content = base64.b64decode(readme.content).decode('utf-8')
                 json_item = get_json_item(readme_content)
                 if json_item:
+                    print(f"Processing repo {repo.name}")
                     items.append(json_item)
+                    del json_item
             except Exception as e:
                 logging.warning(f"Error processing repo {repo.name}: {e}")
                 print(f"Error processing repo {repo.name}: {e}")
@@ -53,7 +62,6 @@ def get_readme_data(github_instance, username):
 
 def save_data(data, output_dir):
     try:
-
         if not os.path.exists(output_dir):
             os.makedirs(output_dir)
         project_json_path = os.path.join(output_dir, "projects.json")
@@ -108,21 +116,18 @@ def push_with_pat(repo, pat, commit_message):
     try:
         remote_url = repo.remote().url
         if "https://" in remote_url:
-            remote_url_with_pat = remote_url.replace("https://", f"https://{pat}@")
+            remote_url_with_pat = re.sub(r"^https://", f"https://{pat}@", remote_url)
         else:
             remote_url_with_pat = remote_url
-
         repo.remote().set_url(remote_url_with_pat)
-
-        # Push the changes
-
+        repo.git.add(update=True)
+        repo.index.commit(commit_message)
         origin = repo.remote('origin')
         origin.push()
-        print("Pushed to repo")
-    except Exception as e:
+        print("Pushed to repo with commit message:", commit_message)
+    except git.exc.GitCommandError as e:
         logging.error(f"Error pushing to repository: {e}")
         print(f"Error pushing to repository: {e}")
-
 
 
 def main():
@@ -137,7 +142,6 @@ def main():
                 "items": get_readme_data(g, USERNAME)
             }
         }
-
         save_data(project_json, "data")
         print("Data saved")
         print("clonning repo")
@@ -146,7 +150,7 @@ def main():
             print("updating hugo ")
             update_hugo(REPO_NAME + "/hugo.yaml", "data/projects.yaml")
             print("pushing to repo")
-            push_with_pat(repo, GH_PAT, "projects scrpit - Updated projects")
+            push_with_pat(repo, GH_PAT, "project script update")
     except Exception as e:
         logging.error(f"Error: {e}")
         print(f"Error: {e}")
