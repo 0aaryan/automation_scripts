@@ -34,7 +34,7 @@ jobs:
         run: |
           cd aryan.me
           pip install -r requirements.txt
-          python Projects_update.py
+          python projects_update.py
 
       - name: Workflow Completed
         run: |
