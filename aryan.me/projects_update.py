@@ -26,6 +26,7 @@ def get_json_item(readme_content):
         return json.loads(json_data)
     except (IndexError, json.JSONDecodeError) as e:
         logging.error(f"Error extracting JSON data: {e}")
+        print(f"Error extracting JSON data: {e}")
         return None
 
 def get_readme_data(github_instance, username):
@@ -43,9 +44,11 @@ def get_readme_data(github_instance, username):
                     items.append(json_item)
             except Exception as e:
                 logging.warning(f"Error processing repo {repo.name}: {e}")
+                print(f"Error processing repo {repo.name}: {e}")
         return items
     except Exception as e:
         logging.error(f"Error fetching user {username}'s repositories: {e}")
+        print(f"Error fetching user {username}'s repositories: {e}")
         return []
 
 def save_data(data, output_dir):
@@ -63,6 +66,7 @@ def save_data(data, output_dir):
             yaml.dump(data, f)
     except Exception as e:
         logging.error(f"Error saving data: {e}")
+        print(f"Error saving data: {e}")
 
 def update_hugo(hugo_file, projects_file):
     try:
@@ -78,6 +82,7 @@ def update_hugo(hugo_file, projects_file):
             yaml.dump(hugo, f)
     except Exception as e:
         logging.error(f"Error updating hugo file: {e}")
+        print(f"Error updating hugo file: {e}")
 
 
 def clone_github_repository(repo_name):
@@ -95,6 +100,7 @@ def clone_github_repository(repo_name):
         return repo
     except Exception as e:
         logging.error(f"Error cloning repository {repo_name}: {e}")
+        print(f"Error cloning repository {repo_name}: {e}")
         return None
 
 
@@ -115,6 +121,7 @@ def push_with_pat(repo, pat, commit_message):
         print("Pushed to repo")
     except Exception as e:
         logging.error(f"Error pushing to repository: {e}")
+        print(f"Error pushing to repository: {e}")
 
 
 
@@ -142,6 +149,7 @@ def main():
             push_with_pat(repo, GH_PAT, "projects scrpit - Updated projects")
     except Exception as e:
         logging.error(f"Error: {e}")
+        print(f"Error: {e}")
 
 
 
